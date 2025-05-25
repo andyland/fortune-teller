@@ -1,0 +1,5 @@
+FROM dustynv/pytorch:2.6-r36.4.0-cu128-24.04
+
+RUN pip install litgpt litserve
+
+CMD ["litgpt", "serve", "/checkpoints/llama", "--openai_spec", "true"]
