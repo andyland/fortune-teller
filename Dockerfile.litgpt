@@ -1,5 +1,5 @@
 FROM dustynv/pytorch:2.6-r36.4.0-cu128-24.04
 
-RUN pip install litgpt litserve
+RUN pip install litgpt litserve bitsandbytes
 
-CMD ["litgpt", "serve", "/checkpoints/llama", "--openai_spec", "true"]
+CMD ["litgpt", "serve", "/checkpoints/llama", "--openai_spec", "true", "--quantize", "bnb.nf4", "--precision", "bf16-true"]

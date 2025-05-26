@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import os
 import argparse
 import requests
 import subprocess
@@ -76,6 +77,12 @@ def main():
 
     print("▶️ Playing back…")
     play_audio(out_wav)
+
+    try:
+        #os.remove(out_wav)
+        print(f"🗑️ Removed temporary file {out_wav}")
+    except OSError as e:
+        print(f"⚠️ Could not remove {out_wav}: {e}", file=sys.stderr)
 
 if __name__ == "__main__":
     main()

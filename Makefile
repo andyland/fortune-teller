@@ -4,7 +4,7 @@ build-litgpt:
 	docker build -t litgpt:latest -f Dockerfile.litgpt .
 
 run-litgpt:
-	docker run --runtime nvidia -it --rm -d --network=host -v /checkpoints/litgpt:/checkpoints litgpt
+	docker run --runtime nvidia -it --rm -d --network=host -v /checkpoints/litgpt:/checkpoints --name litgpt litgpt
 
 build-xtts:
 	docker build -t xtts:latest -f Dockerfile.xtts .
@@ -29,3 +29,6 @@ build-fish:
 
 run-fish:
 	docker run --runtime nvidia -it --rm -d --network=host -v /checkpoints/litgpt:/checkpoints --name fish fish
+
+run-whisper:
+	docker run --runtime nvidia -it --rm -d -v /checkpoints/whisper:/data/models/whisper --network=host dustynv/whisper_trt:r36.3.0 bash
