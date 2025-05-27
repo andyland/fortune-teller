@@ -1,0 +1,7 @@
+FROM dustynv/whisper_trt:r36.3.0
+
+RUN pip install litserve python-multipart
+
+COPY whisper-server.py .
+
+CMD ["python3", "whisper-server.py"]

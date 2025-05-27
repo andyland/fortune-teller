@@ -30,5 +30,9 @@ build-fish:
 run-fish:
 	docker run --runtime nvidia -it --rm -d --network=host -v /checkpoints/litgpt:/checkpoints --name fish fish
 
+build-whisper:
+	docker build -t whisper:latest -f Dockerfile.whisper .
+
 run-whisper:
-	docker run --runtime nvidia -it --rm -d -v /checkpoints/whisper:/data/models/whisper --network=host dustynv/whisper_trt:r36.3.0 bash
+	docker stop whisper || true
+	docker run --runtime nvidia -it --rm -d -v /checkpoints/whisper:/data/models/whisper --network=host --name whisper  whisper
