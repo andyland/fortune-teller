@@ -4,6 +4,7 @@ build-litgpt:
 	docker build -t litgpt:latest -f Dockerfile.litgpt .
 
 run-litgpt:
+	docker stop litgpt || true
 	docker run --runtime nvidia -it --rm -d --network=host -v /checkpoints/litgpt:/checkpoints --name litgpt litgpt
 
 build-xtts:

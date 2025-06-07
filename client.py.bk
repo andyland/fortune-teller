@@ -6,7 +6,6 @@ import requests
 import subprocess
 from datetime import datetime
 import sys
-import time  # new import
 
 # --- Configuration ---
 LLM_API_URL = "http://localhost:8000/v1/chat/completions"
@@ -25,6 +24,7 @@ def call_llm(question: str, model: str, system_prompt: str) -> str:
     resp = requests.post(LLM_API_URL, json=payload)
     resp.raise_for_status()
     data = resp.json()
+    # assume the first choice is what we want
     return data["choices"][0]["message"]["content"]
 
 def call_tts(text: str, out_path: str) -> None:
@@ -34,6 +34,7 @@ def call_tts(text: str, out_path: str) -> None:
         f.write(resp.content)
 
 def play_audio(path: str) -> None:
+    # uses the ALSA 'aplay' utility; adjust if you need another player
     try:
         subprocess.run(["aplay", path], check=True)
     except FileNotFoundError:
@@ -46,41 +47,39 @@ def main():
     parser = argparse.ArgumentParser(
         description="Ask an LLM a question, TTS the answer, and play it."
     )
-    parser.add_argument("-q", "--question", required=True, help="The question to send to the LLM")
-    parser.add_argument("-m", "--model", default="gpt-3.5-turbo", help="Chat model to use")
-    parser.add_argument("-s", "--system-prompt", default=DEFAULT_SYSTEM_PROMPT, help="System prompt for the LLM")
+    parser.add_argument(
+        "-q", "--question",
+        required=True,
+        help="The question to send to the LLM"
+    )
+    parser.add_argument(
+        "-m", "--model",
+        default="gpt-3.5-turbo",
+        help="Chat model to use (default: %(default)s)"
+    )
+    parser.add_argument(
+        "-s", "--system-prompt",
+        default=DEFAULT_SYSTEM_PROMPT,
+        help="System prompt for the LLM (default: mystical fortune teller)"
+    )
     args = parser.parse_args()
 
-    # --- LLM timing ---
     print("🧠 Asking LLM…")
-    t0 = time.perf_counter()
     answer = call_llm(args.question, args.model, args.system_prompt)
-    t1 = time.perf_counter()
-    print(f"⏱️  LLM call took {(t1 - t0):.2f} seconds")
     print("💬 LLM says:", answer)
 
-    # prepare output filename
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     out_wav = f"answer_{timestamp}.wav"
 
-    # --- TTS timing ---
     print("🔊 Generating speech…")
-    t2 = time.perf_counter()
     call_tts(answer, out_wav)
-    t3 = time.perf_counter()
-    print(f"⏱️  TTS generation took {(t3 - t2):.2f} seconds")
     print(f"👉 Saved audio to {out_wav}")
 
-    # --- Playback timing ---
     print("▶️ Playing back…")
-    t4 = time.perf_counter()
     play_audio(out_wav)
-    t5 = time.perf_counter()
-    print(f"⏱️  Playback took {(t5 - t4):.2f} seconds")
 
-    # --- Cleanup ---
     try:
-        os.remove(out_wav)
+        #os.remove(out_wav)
         print(f"🗑️ Removed temporary file {out_wav}")
     except OSError as e:
         print(f"⚠️ Could not remove {out_wav}: {e}", file=sys.stderr)
