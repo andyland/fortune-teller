@@ -35,5 +35,5 @@ build-whisper:
 	docker build -t whisper:latest -f Dockerfile.whisper .
 
 run-whisper:
-	docker stop whisper || true
-	docker run --runtime nvidia -it --rm -d -v /checkpoints/whisper:/data/models/whisper --network=host --name whisper  whisper
+	docker stop whisper && docker rm whisper || true
+	docker run --runtime nvidia -it --restart always -d -v /checkpoints/whisper:/data/models/whisper --network=host --name whisper whisper:latest

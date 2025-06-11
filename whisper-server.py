@@ -2,21 +2,15 @@ import os
 import time
 from fastapi import UploadFile
 import litserve as ls
-from whisper_trt import load_trt_model
 
-# Environment-configurable settings
 MODEL_NAME = os.getenv("WHISPER_MODEL", "base.en")
 PORT = int(os.getenv("PORT", "6001"))
-
-# Load TensorRT-optimized Whisper
-
-def load_model():
-    return load_trt_model(MODEL_NAME)
 
 class WhisperTRTLitAPI(ls.LitAPI):
     def setup(self, device):
         print(f"Initializing Whisper TRT model '{MODEL_NAME}' on {device}...")
-        self.model = load_model()
+        from whisper_trt import load_trt_model
+        self.model = load_trt_model(MODEL_NAME)
         print("Whisper TRT setup complete.")
 
     def decode_request(self, request):
