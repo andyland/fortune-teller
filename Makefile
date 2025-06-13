@@ -4,8 +4,8 @@ build-litgpt:
 	docker build -t litgpt:latest -f Dockerfile.litgpt .
 
 run-litgpt:
-	docker stop litgpt || true
-	docker run --runtime nvidia -it --rm -d --network=host -v /checkpoints/litgpt:/checkpoints --name litgpt litgpt
+	docker stop litgpt && docker rm litgpt || true
+	docker run --runtime nvidia -it --restart always -d --network=host -v /checkpoints/litgpt:/checkpoints --name litgpt litgpt
 
 build-xtts:
 	docker build -t xtts:latest -f Dockerfile.xtts .
@@ -23,7 +23,8 @@ build-melo:
 	docker build -t melo:latest -f Dockerfile.melo .
 
 run-melo:
-	docker run --runtime nvidia -it --rm -d --network=host -v /checkpoints/litgpt:/checkpoints --name melo melo
+	docker stop melo && docker rm melo || true
+	docker run --runtime nvidia -it --restart always -d --network=host -v /checkpoints/litgpt:/checkpoints --name melo melo
 
 build-fish:
 	docker build -t fish:latest -f Dockerfile.fish .

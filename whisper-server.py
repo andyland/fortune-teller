@@ -1,3 +1,4 @@
+import re
 import os
 import time
 from fastapi import UploadFile
@@ -29,8 +30,24 @@ class WhisperTRTLitAPI(ls.LitAPI):
         return result
 
     def encode_response(self, output):
-        # Return only the transcription text
-        return {"transcription": output.get("text", "").strip()}
+        # 1) Get raw Whisper text
+        text = output.get("text", "")
+
+        # 2) Remove annotations in […] or (…)
+        text = re.sub(
+            r'[\[\(]\s*[^)\]]*?\s*[\]\)]',  # anything from '[' or '(' up to matching ']' or ')'
+            '',
+            text,
+            flags=re.IGNORECASE
+        )
+
+        # 3) Remove any leftover bracket or parenthesis characters
+        text = re.sub(r'[\[\]\(\)]', '', text)
+
+        # 4) Collapse multiple spaces/newlines into one space
+        text = re.sub(r'\s+', ' ', text).strip()
+
+        return {"transcription": text}
 
 if __name__ == "__main__":
     api = WhisperTRTLitAPI()
