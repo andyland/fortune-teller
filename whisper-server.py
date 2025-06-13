@@ -4,7 +4,7 @@ import time
 from fastapi import UploadFile
 import litserve as ls
 
-MODEL_NAME = os.getenv("WHISPER_MODEL", "base.en")
+MODEL_NAME = os.getenv("WHISPER_MODEL", "small.en")
 PORT = int(os.getenv("PORT", "6001"))
 
 class WhisperTRTLitAPI(ls.LitAPI):
