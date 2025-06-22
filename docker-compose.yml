@@ -40,6 +40,13 @@ services:
     network_mode: host
     volumes:
       - /checkpoints/litgpt:/checkpoints
+    devices:
+      - /dev/snd:/dev/snd
+    security_opt:
+      - apparmor:unconfined
+    cap_add:
+      - SYS_ADMIN
+      - SYS_RAWIO
 
 networks:
   default:
