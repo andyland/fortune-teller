@@ -6,8 +6,6 @@ import tempfile
 from fastapi import Response
 import litserve as ls
 
-from melo.api import TTS  # <-- MeloTTS instead of f5_tts  [oai_citation:0‡Hugging Face](https://huggingface.co/myshell-ai/MeloTTS-English)
-
 SPEAKER_LANGUAGE = "EN"        # base language code
 DEFAULT_SPEAKER = "EN-US"      # default accent
 SAMPLE_RATE = 22050            # MeloTTS uses 22050 Hz by default
@@ -15,6 +13,7 @@ SPEED = 1.0                    # adjustable speed
 
 class MeloTTSLitAPI(ls.LitAPI):
     def setup(self, device):
+        from melo.api import TTS
         print(f"Initializing MeloTTS on {device}...")
         # initialize the TTS model
         self.tts = TTS(language=SPEAKER_LANGUAGE, device=device)
