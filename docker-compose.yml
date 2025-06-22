@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  melo:
+    build:
+      context: ./melo
+      dockerfile: Dockerfile
+    restart: always
+    runtime: nvidia
+    network_mode: host
+    volumes:
+      - /checkpoints/litgpt:/checkpoints
+
+  whisper:
+    build:
+      context: ./whisper
+      dockerfile: Dockerfile
+    restart: always
+    runtime: nvidia
+    network_mode: host
+    volumes:
+      - /checkpoints/whisper:/data/models/whisper
+
+  litgpt:
+    build:
+      context: ./litgpt
+      dockerfile: Dockerfile
+    restart: always
+    runtime: nvidia
+    network_mode: host
+    volumes:
+      - /checkpoints/litgpt:/checkpoints
+
+networks:
+  default:
+    driver: bridge
