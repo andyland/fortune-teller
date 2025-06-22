@@ -14,7 +14,8 @@ RUN pip install --no-cache-dir \
     requests \
     soundfile \
     numpy \
-    pyaudio
+    pyaudio \
+    sounddevice
 
 COPY . .
 
