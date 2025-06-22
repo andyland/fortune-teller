@@ -19,4 +19,4 @@ RUN pip install --no-cache-dir \
 
 COPY . .
 
-CMD python assistant.py 2>&1
+CMD python assistant.py

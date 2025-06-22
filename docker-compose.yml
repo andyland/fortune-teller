@@ -44,6 +44,8 @@ services:
       - /dev/snd:/dev/snd
     security_opt:
       - apparmor:unconfined
+    group_add:
+    - audio 
     cap_add:
       - SYS_ADMIN
       - SYS_RAWIO
