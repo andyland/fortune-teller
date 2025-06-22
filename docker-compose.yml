@@ -31,6 +31,16 @@ services:
     volumes:
       - /checkpoints/litgpt:/checkpoints
 
+  assistant:
+    build:
+      context: ./assistant
+      dockerfile: Dockerfile
+    restart: always
+    runtime: nvidia
+    network_mode: host
+    volumes:
+      - /checkpoints/litgpt:/checkpoints
+
 networks:
   default:
     driver: bridge

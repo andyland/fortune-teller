@@ -19,6 +19,12 @@ build-f5:
 run-f5:
 	docker run --runtime nvidia -it --restart always -d --network=host -v /checkpoints/litgpt:/checkpoints --name f5 f5
 
+build-assistant:
+	docker build -t assistant:latest -f assistant/Dockerfile assistant
+
+run-assistant:
+	docker run --runtime nvidia -it --restart always -d --network=host -v /checkpoints/litgpt:/checkpoints --name assistant assistant
+
 build-melo:
 	docker build -t melo:latest -f melo/Dockerfile melo
 
