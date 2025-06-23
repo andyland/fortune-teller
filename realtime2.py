@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 import argparse
+import io
+import sys
 import threading
 import time
-import sys
-import io
 from collections import deque
 
 import numpy as np
+import requests
 import sounddevice as sd
 import soundfile as sf
-import requests
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -18,31 +19,31 @@ def main():
     parser.add_argument(
         "--url",
         default="http://localhost:6001/predict",
-        help="Whisper TRT endpoint URL (default: %(default)s)"
+        help="Whisper TRT endpoint URL (default: %(default)s)",
     )
     parser.add_argument(
         "--samplerate",
         type=int,
         default=16000,
-        help="Sampling rate in Hz (default: %(default)s)"
+        help="Sampling rate in Hz (default: %(default)s)",
     )
     parser.add_argument(
         "--channels",
         type=int,
         default=1,
-        help="Number of audio channels (default: %(default)s)"
+        help="Number of audio channels (default: %(default)s)",
     )
     parser.add_argument(
         "--buffer-duration",
         type=float,
         default=20.0,
-        help="How many seconds to keep in the rolling buffer (default: %(default)s)"
+        help="How many seconds to keep in the rolling buffer (default: %(default)s)",
     )
     parser.add_argument(
         "--blocksize",
         type=int,
         default=1024,
-        help="Number of frames per audio callback (default: %(default)s)"
+        help="Number of frames per audio callback (default: %(default)s)",
     )
     args = parser.parse_args()
 
@@ -92,13 +93,19 @@ def main():
             resp = requests.post(url, files=files)
             resp.raise_for_status()
         except requests.RequestException as e:
-            print(f"{time.strftime('%Y-%m-%d %H:%M:%S')} – Request error: {e}", file=sys.stderr)
+            print(
+                f"{time.strftime('%Y-%m-%d %H:%M:%S')} – Request error: {e}",
+                file=sys.stderr,
+            )
             return
 
         try:
             data = resp.json()
         except ValueError:
-            print(f"{time.strftime('%Y-%m-%d %H:%M:%S')} – Failed to parse JSON: {resp.text}", file=sys.stderr)
+            print(
+                f"{time.strftime('%Y-%m-%d %H:%M:%S')} – Failed to parse JSON: {resp.text}",
+                file=sys.stderr,
+            )
             return
 
         transcription = data.get("transcription")
@@ -110,7 +117,7 @@ def main():
         else:
             print(
                 f"{time.strftime('%Y-%m-%d %H:%M:%S')} – No 'transcription' field in response: {data}",
-                file=sys.stderr
+                file=sys.stderr,
             )
 
     # Open an InputStream that calls `audio_callback` for each block
@@ -119,7 +126,7 @@ def main():
             samplerate=samplerate,
             channels=channels,
             blocksize=blocksize,
-            callback=audio_callback
+            callback=audio_callback,
         )
         stream.start()
     except Exception as e:
@@ -138,6 +145,7 @@ def main():
         stream.stop()
         stream.close()
         sys.exit(0)
+
 
 if __name__ == "__main__":
     main()

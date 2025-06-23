@@ -1,19 +1,21 @@
 import io
 import os
-import time
 import tempfile
+import time
 
-from fastapi import Response
 import litserve as ls
+from fastapi import Response
 
-SPEAKER_LANGUAGE = "EN"        # base language code
-DEFAULT_SPEAKER = "EN-US"      # default accent
-SAMPLE_RATE = 22050            # MeloTTS uses 22050 Hz by default
-SPEED = 1.0                    # adjustable speed
+SPEAKER_LANGUAGE = "EN"  # base language code
+DEFAULT_SPEAKER = "EN-US"  # default accent
+SAMPLE_RATE = 22050  # MeloTTS uses 22050 Hz by default
+SPEED = 1.0  # adjustable speed
+
 
 class MeloTTSLitAPI(ls.LitAPI):
     def setup(self, device):
         from melo.api import TTS
+
         print(f"Initializing MeloTTS on {device}...")
         # initialize the TTS model
         self.tts = TTS(language=SPEAKER_LANGUAGE, device=device)
@@ -33,12 +35,7 @@ class MeloTTSLitAPI(ls.LitAPI):
             out_path = tmp.name
 
         # synthesize to file
-        self.tts.tts_to_file(
-            text,
-            self.speaker_id,
-            out_path,
-            speed=SPEED
-        )
+        self.tts.tts_to_file(text, self.speaker_id, out_path, speed=SPEED)
 
         # read back into memory
         with open(out_path, "rb") as f:
@@ -50,6 +47,7 @@ class MeloTTSLitAPI(ls.LitAPI):
 
     def encode_response(self, prediction):
         return Response(content=prediction, headers={"Content-Type": "audio/wav"})
+
 
 if __name__ == "__main__":
     api = MeloTTSLitAPI()

@@ -1,22 +1,26 @@
-import io, base64, torch
-import numpy as np
-import time, os
-import soundfile as sf
+import base64
+import io
+import os
+import time
+
 import litserve as ls
+import numpy as np
+import soundfile as sf
+import torch
 from f5_tts import api
 from fastapi import Response
 
 SPEAKER_WAV_FILE = "obama.wav"
 LANGUAGE = "en"
 
+
 class F5TTSLitAPI(ls.LitAPI):
     def setup(self, device):
         print("using {}".format(device))
         self.f5tts = api.F5TTS(
-                device=device, 
-                model="E2TTS_Base",
-                hf_cache_dir="/checkpoints")
-        print('setup complete...')
+            device=device, model="E2TTS_Base", hf_cache_dir="/checkpoints"
+        )
+        print("setup complete...")
 
     def decode_request(self, request):
         return request["text"]
@@ -30,7 +34,7 @@ class F5TTSLitAPI(ls.LitAPI):
         )
 
         audio_buffer = io.BytesIO()
-        sf.write(audio_buffer, wav, samplerate=22050, format='WAV')
+        sf.write(audio_buffer, wav, samplerate=22050, format="WAV")
         audio_buffer.seek(0)
         audio_data = audio_buffer.getvalue()
         audio_buffer.close()
@@ -39,6 +43,7 @@ class F5TTSLitAPI(ls.LitAPI):
 
     def encode_response(self, prediction):
         return Response(content=prediction, headers={"Content-Type": "audio/wav"})
+
 
 if __name__ == "__main__":
     api = F5TTSLitAPI()
