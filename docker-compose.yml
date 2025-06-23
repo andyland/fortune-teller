@@ -45,6 +45,8 @@ services:
       - /etc/asound.conf:/etc/asound.conf:ro
       - /var/run/alsa:/var/run/alsa:ro
       - /var/lib/alsa:/var/lib/alsa:ro
+      - /run/user/1000/pulse:/run/user/1000/pulse:rw
+      - /run/pulse/native:/run/pulse/native:rw
     devices:
       - /dev/snd:/dev/snd
     security_opt:
@@ -62,3 +64,5 @@ services:
       - PULSE_SERVER=unix:/run/pulse/native
       - PULSE_COOKIE=/run/pulse/cookie
       - PULSE_RUNTIME_PATH=/run/user/1000/pulse
+      - DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
+      - XDG_RUNTIME_DIR=/run/user/1000
