@@ -34,35 +34,32 @@ services:
     volumes:
       - /checkpoints/litgpt:/checkpoints
 
+
   assistant:
     build:
       context: ./assistant
       dockerfile: Dockerfile
+    image: assistant:latest
     restart: always
+    gpus: all
+    privileged: true
     network_mode: host
     volumes:
       - /checkpoints/litgpt:/checkpoints
-      - /etc/asound.conf:/etc/asound.conf:ro
-      - /var/run/alsa:/var/run/alsa:ro
-      - /var/lib/alsa:/var/lib/alsa:ro
-      - /run/user/1000/pulse:/run/user/1000/pulse:rw
-      - /run/pulse/native:/run/pulse/native:rw
+      - /run/user/1000/pulse/native:/run/user/1000/pulse/native
+      - ${HOME}/.config/pulse/cookie:/app/pulse/cookie
     devices:
       - /dev/snd:/dev/snd
     security_opt:
       - apparmor:unconfined
     group_add:
       - audio
+      - pulse-access
     cap_add:
       - SYS_ADMIN
       - SYS_RAWIO
+    user: "1000"
     environment:
-      - ALSA_CONFIG_PATH=/etc/asound.conf
-      - HOME=/root
-      - USER=root
-      - LOGNAME=root
-      - PULSE_SERVER=unix:/run/pulse/native
-      - PULSE_COOKIE=/run/pulse/cookie
-      - PULSE_RUNTIME_PATH=/run/user/1000/pulse
-      - DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
+      - PULSE_SERVER=unix:/run/user/1000/pulse/native
       - XDG_RUNTIME_DIR=/run/user/1000
+      - PULSE_COOKIE=/app/pulse/cookie

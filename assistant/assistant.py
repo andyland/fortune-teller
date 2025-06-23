@@ -4,6 +4,7 @@ import io
 import os
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 from collections import deque
@@ -202,24 +203,20 @@ class VoiceAssistant:
 
             # Generate TTS
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            out_wav = f"response_{timestamp}.wav"
 
-            print("🔊 Generating speech...")
-            t2 = time.perf_counter()
-            if self.call_tts(answer, out_wav):
-                t3 = time.perf_counter()
-                print(f"▶️ Playing response ({(t3-t2):.1f}s generation)...")
+            with tempfile.TemporaryDirectory() as tmpdir:
+                out_wav = f"{tmpdir}/response_{timestamp}.wav"
 
-                t4 = time.perf_counter()
-                self.play_audio(out_wav)
-                t5 = time.perf_counter()
-                print(f"✅ Done ({(t5-t4):.1f}s playback)")
+                print("🔊 Generating speech...")
+                t2 = time.perf_counter()
+                if self.call_tts(answer, out_wav):
+                    t3 = time.perf_counter()
+                    print(f"▶️ Playing response ({(t3-t2):.1f}s generation)...")
 
-                # Cleanup
-                try:
-                    os.remove(out_wav)
-                except OSError:
-                    pass
+                    t4 = time.perf_counter()
+                    self.play_audio(out_wav)
+                    t5 = time.perf_counter()
+                    print(f"✅ Done ({(t5-t4):.1f}s playback)")
 
         except Exception as e:
             print(f"❌ Error processing question: {e}", file=sys.stderr)
