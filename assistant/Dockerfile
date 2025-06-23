@@ -7,24 +7,19 @@ RUN apt-get update && apt-get install -y \
     portaudio19-dev \
     build-essential \
     gcc \
-    pulseaudio \
-    pulseaudio-utils \
+    alsa-utils \
     libasound2 \
     libasound2-plugins \
     && rm -rf /var/lib/apt/lists/*
 
-# Set up PulseAudio
-RUN mkdir -p /var/run/pulse
-RUN chown -R pulse:pulse /var/run/pulse
+# Configure ALSA
+RUN echo "pcm.!default {\ntype hw\ncard 2\ndevice 0\n}" > /etc/asound.conf
+RUN echo "ctl.!default {\ntype hw\ncard 2\ndevice 0\n}" >> /etc/asound.conf
 
-# Set environment variables
-ENV PULSE_SERVER=unix:/run/pulse/native \
-    PULSE_COOKIE=/run/pulse/cookie \
-    PULSE_RUNTIME_PATH=/run/user/1000/pulse
-
-# Create PulseAudio runtime directory
-RUN mkdir -p /run/user/1000/pulse
-RUN chown -R 1000:1000 /run/user/1000/pulse
+# Create necessary ALSA directories
+RUN mkdir -p /var/run/alsa
+RUN chown -R root:audio /var/run/alsa
+RUN chmod 775 /var/run/alsa
 
 # Install Python dependencies
 RUN pip install --no-cache-dir \

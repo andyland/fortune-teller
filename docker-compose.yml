@@ -38,12 +38,12 @@ services:
     build:
       context: ./assistant
       dockerfile: Dockerfile
-    image: assistant:latest
     restart: always
-    gpus: all
+    runtime: nvidia
     network_mode: host
     volumes:
       - /checkpoints/litgpt:/checkpoints
+      - /var/run/alsa:/var/run/alsa:ro
     devices:
       - /dev/snd:/dev/snd
     security_opt:
@@ -53,3 +53,7 @@ services:
     cap_add:
       - SYS_ADMIN
       - SYS_RAWIO
+    environment:
+      - ALSA_CONFIG_PATH=/etc/asound.conf
+      - ALSA_CARD=2
+      - ALSA_DEVICE=0
