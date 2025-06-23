@@ -39,11 +39,12 @@ services:
       context: ./assistant
       dockerfile: Dockerfile
     restart: always
-    runtime: nvidia
     network_mode: host
     volumes:
       - /checkpoints/litgpt:/checkpoints
+      - /etc/asound.conf:/etc/asound.conf:ro
       - /var/run/alsa:/var/run/alsa:ro
+      - /var/lib/alsa:/var/lib/alsa:ro
     devices:
       - /dev/snd:/dev/snd
     security_opt:
@@ -55,5 +56,9 @@ services:
       - SYS_RAWIO
     environment:
       - ALSA_CONFIG_PATH=/etc/asound.conf
-      - ALSA_CARD=2
-      - ALSA_DEVICE=0
+      - HOME=/root
+      - USER=root
+      - LOGNAME=root
+      - PULSE_SERVER=unix:/run/pulse/native
+      - PULSE_COOKIE=/run/pulse/cookie
+      - PULSE_RUNTIME_PATH=/run/user/1000/pulse

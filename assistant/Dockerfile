@@ -12,12 +12,9 @@ RUN apt-get update && apt-get install -y \
     libasound2-plugins \
     && rm -rf /var/lib/apt/lists/*
 
-# Configure ALSA
-RUN echo "pcm.!default {\ntype hw\ncard 2\ndevice 0\n}" > /etc/asound.conf
-RUN echo "ctl.!default {\ntype hw\ncard 2\ndevice 0\n}" >> /etc/asound.conf
-
-# Create necessary ALSA directories
+# Create necessary directories with proper permissions
 RUN mkdir -p /var/run/alsa
+RUN mkdir -p /var/run/pulse
 RUN chown -R root:audio /var/run/alsa
 RUN chmod 775 /var/run/alsa
 
