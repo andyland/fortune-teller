@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  melo:
+    build:
+      context: ./melo
+      dockerfile: Dockerfile
+    image: melo:latest
+    restart: always
+    gpus: all
+    network_mode: host
+    volumes:
+      - /checkpoints/litgpt:/checkpoints
+
+  whisper:
+    build:
+      context: ./whisper
+      dockerfile: Dockerfile
+    image: whisper:latest
+    restart: always
+    gpus: all
+    network_mode: host
+    volumes:
+      - /checkpoints/whisper:/data/models/whisper
+
+  litgpt:
+    build:
+      context: ./litgpt
+      dockerfile: Dockerfile
+    image: litgpt:latest
+    restart: always
+    gpus: all
+    network_mode: host
+    volumes:
+      - /checkpoints/litgpt:/checkpoints
+
+
+  assistant:
+    build:
+      context: ./assistant
+      dockerfile: Dockerfile
+    image: assistant:latest
+    restart: always
+    gpus: all
+    network_mode: host
+    volumes:
+      - /checkpoints/litgpt:/checkpoints
+      - /run/user/1000/pulse/native:/run/user/1000/pulse/native
+      - ${HOME}/.config/pulse/cookie:/app/pulse/cookie
+    devices:
+      - /dev/snd:/dev/snd
+    group_add:
+      - audio
+      - pulse-access
+    user: "1000"
+    environment:
+      - PULSE_SERVER=unix:/run/user/1000/pulse/native
+      - XDG_RUNTIME_DIR=/run/user/1000
+      - PULSE_COOKIE=/app/pulse/cookie
