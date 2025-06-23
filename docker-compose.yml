@@ -5,8 +5,9 @@ services:
     build:
       context: ./melo
       dockerfile: Dockerfile
+    image: melo:latest
     restart: always
-    runtime: nvidia
+    gpus: all
     network_mode: host
     volumes:
       - /checkpoints/litgpt:/checkpoints
@@ -15,8 +16,9 @@ services:
     build:
       context: ./whisper
       dockerfile: Dockerfile
+    image: whisper:latest
     restart: always
-    runtime: nvidia
+    gpus: all
     network_mode: host
     volumes:
       - /checkpoints/whisper:/data/models/whisper
@@ -25,8 +27,9 @@ services:
     build:
       context: ./litgpt
       dockerfile: Dockerfile
+    image: litgpt:latest
     restart: always
-    runtime: nvidia
+    gpus: all
     network_mode: host
     volumes:
       - /checkpoints/litgpt:/checkpoints
@@ -35,8 +38,9 @@ services:
     build:
       context: ./assistant
       dockerfile: Dockerfile
+    image: assistant:latest
     restart: always
-    runtime: nvidia
+    gpus: all
     network_mode: host
     volumes:
       - /checkpoints/litgpt:/checkpoints
@@ -45,11 +49,7 @@ services:
     security_opt:
       - apparmor:unconfined
     group_add:
-    - audio 
+      - audio
     cap_add:
       - SYS_ADMIN
       - SYS_RAWIO
-
-networks:
-  default:
-    driver: bridge

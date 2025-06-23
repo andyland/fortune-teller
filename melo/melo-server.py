@@ -53,5 +53,5 @@ class MeloTTSLitAPI(ls.LitAPI):
 
 if __name__ == "__main__":
     api = MeloTTSLitAPI()
-    server = ls.LitServer(api)
+    server = ls.LitServer(api, accelerator="cuda")
     server.run(port=6000)
