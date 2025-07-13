@@ -44,3 +44,10 @@ build-whisper:
 run-whisper:
 	docker stop whisper && docker rm whisper || true
 	docker run --runtime nvidia -it --restart always -d -v /checkpoints/whisper:/data/models/whisper --network=host --name whisper whisper:latest
+
+build-silero:
+	docker build -t silero:latest -f silero/Dockerfile silero
+
+run-silero:
+	docker stop silero && docker rm silero || true
+	docker run  --runtime nvidia -it --restart always -d -v /checkpoints/torch:/data/models/torch  --network=host --name silero silero:latest
