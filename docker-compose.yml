@@ -1,6 +1,17 @@
 version: '3.8'
 
 services:
+  siler:
+    build:
+      context: ./silero
+      dockerfile: Dockerfile
+    image: silero:latest
+    restart: always
+    gpus: all
+    network_mode: host
+    volumes:
+      - /checkpoints/torch:/data/models/torch
+
   melo:
     build:
       context: ./melo
@@ -10,7 +21,7 @@ services:
     gpus: all
     network_mode: host
     volumes:
-      - /checkpoints/litgpt:/checkpoints
+      - /checkpoints:/checkpoints
 
   whisper:
     build:
