@@ -1,4 +1,4 @@
-FROM python:3.10-slim
+FROM dustynv/torchaudio:2.6.0-r36.4.0-cu128
 
 WORKDIR /app
 
@@ -24,6 +24,8 @@ RUN pip install --no-cache-dir \
     numpy \
     pyaudio \
     sounddevice
+
+RUN pip install --no-cache-dir silero-vad
 
 COPY . .
 

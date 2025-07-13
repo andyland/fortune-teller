@@ -14,6 +14,7 @@ import numpy as np
 import requests
 import sounddevice as sd
 import soundfile as sf
+from silero_vad import get_speech_timestamps, load_silero_vad
 
 
 class VoiceAssistant:
@@ -28,6 +29,7 @@ class VoiceAssistant:
         buffer_duration=20.0,
         blocksize=1024,
         system_prompt=None,
+        vad_speech_end_duration=0.8,
     ):
         self.whisper_url = whisper_url
         self.llm_url = llm_url
@@ -61,6 +63,27 @@ class VoiceAssistant:
         self.last_activity_time = time.time()  # Track last question time
         self.history_timeout = 60.0  # Clear history after 60s of inactivity
 
+        self.vad = load_silero_vad()
+        self.vad_speech_end_duration = vad_speech_end_duration
+        self.vad_state_buffer = deque(
+            maxlen=int(np.ceil(vad_speech_end_duration / (blocksize / samplerate)))
+        )
+        self.was_speaking = False
+
+    def is_speech(self, audio_chunk):
+        """Check if the audio chunk contains speech using Silero VAD."""
+        # Silero expects float32 numpy array, 1D, -1..1
+        if audio_chunk.dtype != np.float32:
+            audio_chunk = audio_chunk.astype(np.float32)
+        # Flatten and normalize if needed
+        audio_chunk = audio_chunk.flatten()
+        # Get speech timestamps using Silero VAD
+        speech_timestamps = get_speech_timestamps(
+            audio_chunk, self.vad, return_seconds=True, sampling_rate=self.samplerate
+        )
+        # If any speech timestamps are found, there is speech
+        return len(speech_timestamps) > 0
+
     def audio_callback(self, indata, frames, time_info, status):
         if status:
             print(f"InputStream status: {status}", file=sys.stderr)
@@ -72,6 +95,13 @@ class VoiceAssistant:
         chunk = indata.copy()
         with self.buffer_lock:
             self.audio_buffer.append(chunk)
+        # VAD state tracking using Silero
+        try:
+            speech = self.is_speech(chunk)
+        except Exception as e:
+            print(f"VAD error: {e}", file=sys.stderr)
+            speech = False
+        self.vad_state_buffer.append(speech)
 
     def get_transcription(self):
         """Get transcription from current audio buffer"""
@@ -246,54 +276,32 @@ class VoiceAssistant:
             print("👂 Listening for next question...")
 
     def monitor_transcriptions(self):
-        """Monitor transcriptions and detect completed questions"""
+        """Monitor VAD and transcriptions to detect completed questions"""
         while True:
             try:
-                # Check for history timeout during idle periods
                 if not self.paused and not self.processing:
                     self.check_history_timeout()
-
-                # Skip processing if we're handling a question
                 if self.paused:
                     time.sleep(1)
                     continue
-
                 current_time = time.time()
-                transcription = self.get_transcription()
-
-                if transcription and len(transcription) > 5:  # Minimum length filter
-                    # Check if transcription has changed significantly
-                    if transcription != self.last_transcription:
-                        self.last_transcription = transcription
-                        self.last_transcription_time = current_time
-                        print(
-                            f"\r🎙️ Listening: {transcription[:50]}{'...' if len(transcription) > 50 else ''}",
-                            end="",
-                            flush=True,
-                        )
-
-                    # Check for silence (transcription hasn't changed for a while)
-                    elif (
-                        current_time - self.last_transcription_time
-                        > self.silence_threshold
-                        and not self.processing
-                        and len(transcription.strip()) > 10
-                    ):
-                        # Clear the listening line
+                # VAD-based speech detection
+                speaking = any(self.vad_state_buffer)
+                if speaking:
+                    self.was_speaking = True
+                # If we were speaking and now not speaking for vad_speech_end_duration, trigger
+                elif self.was_speaking and not speaking:
+                    transcription = self.get_transcription()
+                    if transcription and len(transcription.strip()) > 5:
                         print("\r" + " " * 80 + "\r", end="")
-
-                        # Process the question in a separate thread to avoid blocking
                         question_thread = threading.Thread(
                             target=self.process_question, args=(transcription,)
                         )
                         question_thread.daemon = True
                         question_thread.start()
-
-                        # Wait for processing to start before continuing
+                        self.was_speaking = False
                         time.sleep(0.5)
-
-                time.sleep(0.5)  # Check every 500ms
-
+                time.sleep(0.1)
             except Exception as e:
                 print(f"\nMonitoring error: {e}", file=sys.stderr)
                 time.sleep(1)
@@ -415,6 +423,12 @@ def main():
         default=60.0,
         help="Clear conversation history after N seconds of inactivity (default: %(default)s)",
     )
+    parser.add_argument(
+        "--vad-speech-end-duration",
+        type=float,
+        default=0.8,
+        help="Seconds of non-speech to consider speech ended (default: %(default)s)",
+    )
 
     args = parser.parse_args()
 
@@ -429,6 +443,7 @@ def main():
         buffer_duration=args.buffer_duration,
         blocksize=args.blocksize,
         system_prompt=args.system_prompt,
+        vad_speech_end_duration=args.vad_speech_end_duration,
     )
 
     assistant.silence_threshold = args.silence_threshold
