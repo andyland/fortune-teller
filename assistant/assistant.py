@@ -22,6 +22,7 @@ class VoiceAssistant:
         whisper_url,
         llm_url,
         tts_url,
+        microphone="24",
         samplerate=16000,
         channels=1,
         buffer_duration=20.0,
@@ -31,6 +32,7 @@ class VoiceAssistant:
         self.whisper_url = whisper_url
         self.llm_url = llm_url
         self.tts_url = tts_url
+        self.microphone = microphone
         self.samplerate = samplerate
         self.channels = channels
         self.buffer_duration = buffer_duration
@@ -300,6 +302,7 @@ class VoiceAssistant:
         """Start the voice assistant"""
         try:
             self.stream = sd.InputStream(
+                device=self.microphone,
                 samplerate=self.samplerate,
                 channels=self.channels,
                 blocksize=self.blocksize,
@@ -365,6 +368,11 @@ def main():
         help="Sampling rate in Hz (default: %(default)s)",
     )
     parser.add_argument(
+        "--microphone",
+        default=24,
+        help="Microphone device to use",
+    )
+    parser.add_argument(
         "--channels",
         type=int,
         default=1,
@@ -415,6 +423,7 @@ def main():
         whisper_url=args.whisper_url,
         llm_url=args.llm_url,
         tts_url=args.tts_url,
+        microphone=args.microphone,
         samplerate=args.samplerate,
         channels=args.channels,
         buffer_duration=args.buffer_duration,

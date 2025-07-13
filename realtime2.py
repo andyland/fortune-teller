@@ -45,6 +45,11 @@ def main():
         default=1024,
         help="Number of frames per audio callback (default: %(default)s)",
     )
+    parser.add_argument(
+        "--device",
+        default="0",
+        help="Device to use (default: %(default)s)",
+    )
     args = parser.parse_args()
 
     url = args.url
@@ -52,6 +57,7 @@ def main():
     channels = args.channels
     buffer_duration = args.buffer_duration
     blocksize = args.blocksize
+    device = args.device
 
     # Calculate how many chunks of size `blocksize` we need to cover buffer_duration
     chunks_needed = int(np.ceil(buffer_duration * samplerate / blocksize))
@@ -124,6 +130,7 @@ def main():
     try:
         stream = sd.InputStream(
             samplerate=samplerate,
+            device=device,
             channels=channels,
             blocksize=blocksize,
             callback=audio_callback,
