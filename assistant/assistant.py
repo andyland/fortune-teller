@@ -90,8 +90,11 @@ class VoiceAssistant:
         self.last_transcription = ""
         self.last_transcription_time = 0
         self.silence_threshold = 3.0  # seconds of same transcription = silence
-        self.vad_silence_threshold = 1.5  # seconds without voice activity
+        self.vad_silence_threshold = 1.0  # seconds without voice activity
+        self.vad_buffer_duration = 2.0  # seconds of audio for VAD analysis
         self.last_voice_activity_time = 0
+        self.speech_start_time = 0
+        self.is_speaking = False
         self.processing = False
         self.paused = False  # Flag to pause audio processing
         self.stream = None
@@ -200,7 +203,13 @@ class VoiceAssistant:
         with self.buffer_lock:
             if not self.audio_buffer:
                 return False
-            audio_data = np.concatenate(list(self.audio_buffer), axis=0)
+            
+            # Use only the last N seconds for VAD (more responsive)
+            vad_chunks_needed = int(np.ceil(self.vad_buffer_duration * self.samplerate / self.blocksize))
+            recent_chunks = list(self.audio_buffer)[-vad_chunks_needed:]
+            if not recent_chunks:
+                return False
+            audio_data = np.concatenate(recent_chunks, axis=0)
 
         # Write to BytesIO as WAV
         wav_io = io.BytesIO()
@@ -214,8 +223,23 @@ class VoiceAssistant:
             data = resp.json()
             has_voice = data.get("has_voice", False)
             
+            # Update speech state based on VAD
+            current_time = time.time()
             if has_voice:
-                self.last_voice_activity_time = time.time()
+                self.last_voice_activity_time = current_time
+                if not self.is_speaking:
+                    # Speech just started
+                    self.is_speaking = True
+                    self.speech_start_time = current_time
+                    print(f"\r🎤 Speech started", end="", flush=True)
+                else:
+                    print(f"\r🔊 Speaking... ({current_time - self.speech_start_time:.1f}s)", end="", flush=True)
+            else:
+                if self.is_speaking:
+                    silence_duration = current_time - self.last_voice_activity_time if self.last_voice_activity_time > 0 else 0
+                    print(f"\r🔇 Speech paused (silent for {silence_duration:.1f}s)", end="", flush=True)
+                else:
+                    print(f"\r👂 Listening...", end="", flush=True)
             
             return has_voice
         except requests.RequestException as e:
@@ -305,6 +329,8 @@ class VoiceAssistant:
             self.last_transcription = ""
             self.last_transcription_time = time.time()
             self.last_voice_activity_time = 0
+            self.speech_start_time = 0
+            self.is_speaking = False
 
             print("🗑️ Cleared audio buffer for fresh recording")
             print("▶️ Resuming audio processing...")
@@ -318,7 +344,7 @@ class VoiceAssistant:
             print("👂 Listening for next question...")
 
     def monitor_transcriptions(self):
-        """Monitor transcriptions and detect completed questions"""
+        """Monitor VAD and transcriptions to detect completed questions"""
         while True:
             try:
                 # Check for history timeout during idle periods
@@ -331,44 +357,53 @@ class VoiceAssistant:
                     continue
 
                 current_time = time.time()
-                transcription = self.get_transcription()
+                
+                # Always check VAD to track speech state
+                has_voice = self.check_voice_activity()
+                
+                # Only get transcription if we're speaking or just finished speaking
+                transcription = None
+                if self.is_speaking or (self.last_voice_activity_time > 0 and 
+                                       current_time - self.last_voice_activity_time < self.vad_silence_threshold * 2):
+                    transcription = self.get_transcription()
 
-                if transcription and len(transcription) > 5:  # Minimum length filter
-                    # Check if transcription has changed significantly
+                # Update transcription display if we have speech
+                if transcription and len(transcription) > 5:
                     if transcription != self.last_transcription:
                         self.last_transcription = transcription
                         self.last_transcription_time = current_time
+                        speech_duration = current_time - self.speech_start_time if self.speech_start_time > 0 else 0
                         print(
-                            f"\r🎙️ Listening: {transcription[:50]}{'...' if len(transcription) > 50 else ''}",
+                            f"\r🎙️ ({speech_duration:.1f}s): {transcription[:50]}{'...' if len(transcription) > 50 else ''}",
                             end="",
                             flush=True,
                         )
 
-                    # Use VAD for speech end detection
-                    has_voice = self.check_voice_activity()
-                    
-                    # Check for end of speech using VAD
-                    if (
-                        not has_voice 
-                        and self.last_voice_activity_time > 0
-                        and current_time - self.last_voice_activity_time > self.vad_silence_threshold
-                        and not self.processing
-                        and len(transcription.strip()) > 10
-                    ):
-                        # Clear the listening line
-                        print("\r" + " " * 80 + "\r", end="")
+                # Check for end of speech using VAD
+                if (
+                    self.is_speaking  # We were speaking
+                    and not has_voice  # But VAD says no voice now
+                    and self.last_voice_activity_time > 0
+                    and current_time - self.last_voice_activity_time > self.vad_silence_threshold
+                    and not self.processing
+                    and transcription
+                    and len(transcription.strip()) > 10
+                ):
+                    # Speech has ended, process the question
+                    self.is_speaking = False
+                    print("\r" + " " * 80 + "\r", end="")
 
-                        # Process the question in a separate thread to avoid blocking
-                        question_thread = threading.Thread(
-                            target=self.process_question, args=(transcription,)
-                        )
-                        question_thread.daemon = True
-                        question_thread.start()
+                    # Process the question in a separate thread to avoid blocking
+                    question_thread = threading.Thread(
+                        target=self.process_question, args=(transcription,)
+                    )
+                    question_thread.daemon = True
+                    question_thread.start()
 
-                        # Wait for processing to start before continuing
-                        time.sleep(0.5)
+                    # Wait for processing to start before continuing
+                    time.sleep(0.5)
 
-                time.sleep(0.5)  # Check every 500ms
+                time.sleep(0.2)  # Check every 200ms for responsive VAD
 
             except Exception as e:
                 print(f"\nMonitoring error: {e}", file=sys.stderr)
@@ -498,6 +533,12 @@ def main():
         default=60.0,
         help="Clear conversation history after N seconds of inactivity (default: %(default)s)",
     )
+    parser.add_argument(
+        "--vad-silence-threshold",
+        type=float,
+        default=1.0,
+        help="Seconds of VAD silence before processing question (default: %(default)s)",
+    )
 
     args = parser.parse_args()
 
@@ -518,6 +559,7 @@ def main():
     assistant.silence_threshold = args.silence_threshold
     assistant.max_history_length = args.max_history
     assistant.history_timeout = args.history_timeout
+    assistant.vad_silence_threshold = args.vad_silence_threshold
 
     try:
         assistant.start()
