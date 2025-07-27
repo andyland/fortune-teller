@@ -16,6 +16,33 @@ import sounddevice as sd
 import soundfile as sf
 
 
+def find_microphone_device(device_name_pattern="CVL-2005"):
+    """Find microphone device by name pattern"""
+    try:
+        devices = sd.query_devices()
+        for i, device in enumerate(devices):
+            device_info = str(device)
+            # Look for device with the pattern and input channels
+            if (device_name_pattern.lower() in device_info.lower() 
+                and device.get('max_input_channels', 0) > 0):
+                print(f"🎤 Auto-detected microphone: Device {i} - {device['name']}")
+                return i
+        
+        # Fallback: find any USB Audio device with input
+        for i, device in enumerate(devices):
+            device_info = str(device)
+            if ("usb audio" in device_info.lower() 
+                and device.get('max_input_channels', 0) > 0):
+                print(f"🎤 Found USB Audio device: Device {i} - {device['name']}")
+                return i
+                
+        print("⚠️ No CVL-2005 or USB Audio device found, using default")
+        return None
+    except Exception as e:
+        print(f"❌ Error detecting microphone: {e}")
+        return None
+
+
 class VoiceAssistant:
     def __init__(
         self,
@@ -23,7 +50,7 @@ class VoiceAssistant:
         llm_url,
         tts_url,
         vad_url="http://localhost:6004/predict",
-        microphone="24",
+        microphone="CVL-2005",
         samplerate=16000,
         channels=1,
         buffer_duration=20.0,
@@ -34,7 +61,17 @@ class VoiceAssistant:
         self.llm_url = llm_url
         self.tts_url = tts_url
         self.vad_url = vad_url
-        self.microphone = microphone
+        
+        # Auto-detect microphone if needed
+        if microphone == "auto" or microphone == "CVL-2005":
+            detected_mic = find_microphone_device()
+            self.microphone = detected_mic if detected_mic is not None else 27  # fallback to default
+        else:
+            try:
+                self.microphone = int(microphone)
+            except (ValueError, TypeError):
+                self.microphone = microphone
+        
         self.samplerate = samplerate
         self.channels = channels
         self.buffer_duration = buffer_duration
@@ -415,8 +452,8 @@ def main():
     )
     parser.add_argument(
         "--microphone",
-        default=24,
-        help="Microphone device to use",
+        default="CVL-2005",
+        help="Microphone device to use (device number, 'auto', or 'CVL-2005' for auto-detect)",
     )
     parser.add_argument(
         "--channels",

@@ -27,4 +27,4 @@ RUN pip install --no-cache-dir \
 
 COPY . .
 
-CMD python assistant.py --microphone 0,0
+CMD python assistant.py
