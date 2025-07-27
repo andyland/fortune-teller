@@ -22,6 +22,7 @@ class VoiceAssistant:
         whisper_url,
         llm_url,
         tts_url,
+        vad_url="http://localhost:6004/predict",
         microphone="24",
         samplerate=16000,
         channels=1,
@@ -32,6 +33,7 @@ class VoiceAssistant:
         self.whisper_url = whisper_url
         self.llm_url = llm_url
         self.tts_url = tts_url
+        self.vad_url = vad_url
         self.microphone = microphone
         self.samplerate = samplerate
         self.channels = channels
@@ -51,6 +53,8 @@ class VoiceAssistant:
         self.last_transcription = ""
         self.last_transcription_time = 0
         self.silence_threshold = 3.0  # seconds of same transcription = silence
+        self.vad_silence_threshold = 1.5  # seconds without voice activity
+        self.last_voice_activity_time = 0
         self.processing = False
         self.paused = False  # Flag to pause audio processing
         self.stream = None
@@ -151,6 +155,36 @@ class VoiceAssistant:
             print(f"TTS error: {e}", file=sys.stderr)
             return False
 
+    def check_voice_activity(self) -> bool:
+        """Check if there's current voice activity using Silero VAD"""
+        if not self.vad_url or self.paused:
+            return False
+
+        with self.buffer_lock:
+            if not self.audio_buffer:
+                return False
+            audio_data = np.concatenate(list(self.audio_buffer), axis=0)
+
+        # Write to BytesIO as WAV
+        wav_io = io.BytesIO()
+        sf.write(wav_io, audio_data, self.samplerate, format="WAV")
+        wav_io.seek(0)
+
+        files = {"content": ("buffer.wav", wav_io, "audio/wav")}
+        try:
+            resp = requests.post(self.vad_url, files=files, timeout=5)
+            resp.raise_for_status()
+            data = resp.json()
+            has_voice = data.get("has_voice", False)
+            
+            if has_voice:
+                self.last_voice_activity_time = time.time()
+            
+            return has_voice
+        except requests.RequestException as e:
+            print(f"VAD error: {e}", file=sys.stderr)
+            return False
+
     def check_history_timeout(self):
         """Clear conversation history if inactive for too long"""
         current_time = time.time()
@@ -233,6 +267,7 @@ class VoiceAssistant:
             # Reset transcription state completely
             self.last_transcription = ""
             self.last_transcription_time = time.time()
+            self.last_voice_activity_time = 0
 
             print("🗑️ Cleared audio buffer for fresh recording")
             print("▶️ Resuming audio processing...")
@@ -272,10 +307,14 @@ class VoiceAssistant:
                             flush=True,
                         )
 
-                    # Check for silence (transcription hasn't changed for a while)
-                    elif (
-                        current_time - self.last_transcription_time
-                        > self.silence_threshold
+                    # Use VAD for speech end detection
+                    has_voice = self.check_voice_activity()
+                    
+                    # Check for end of speech using VAD
+                    if (
+                        not has_voice 
+                        and self.last_voice_activity_time > 0
+                        and current_time - self.last_voice_activity_time > self.vad_silence_threshold
                         and not self.processing
                         and len(transcription.strip()) > 10
                     ):
@@ -360,6 +399,13 @@ def main():
         help="TTS API endpoint URL (default: %(default)s)",
     )
 
+    # VAD settings
+    parser.add_argument(
+        "--vad-url",
+        default="http://localhost:6004/predict",
+        help="Silero VAD API endpoint URL (default: %(default)s)",
+    )
+
     # Audio settings
     parser.add_argument(
         "--samplerate",
@@ -423,6 +469,7 @@ def main():
         whisper_url=args.whisper_url,
         llm_url=args.llm_url,
         tts_url=args.tts_url,
+        vad_url=args.vad_url,
         microphone=args.microphone,
         samplerate=args.samplerate,
         channels=args.channels,
