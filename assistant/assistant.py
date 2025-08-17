@@ -266,7 +266,7 @@ class VoiceAssistant:
         """Play audio file"""
         try:
             subprocess.run(
-                ["aplay", path],
+                ["aplay", "-D", "plughw:1,0", path],
                 check=True,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
